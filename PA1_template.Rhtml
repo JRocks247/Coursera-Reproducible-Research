@@ -1,0 +1,166 @@
+<html>
+
+<head>
+<title>Reproducible Research: Peer Assessment 1
+</title>
+</head>
+
+<body>
+
+<b>REPRODUCIBLE RESEARCH: PEER ASSESSMENT 1</b>
+
+<p>Created by John Allen Jan 21, 2015</p>
+
+<b>Basic Settings</b> 
+
+<!--begin.rcode
+setwd("C:/Users/Jono/Desktop/Coursera/Reproducible")
+echo = TRUE  # Always make code visible
+options(scipen = 1)  # Turn off scientific notations for numbers
+end.rcode-->
+
+<b>Load and Process Data</b>
+
+<!--begin.rcode
+ data <- read.csv("activity.csv", colClasses = c("integer", "Date", "factor"))
+ data$month <- as.numeric(format(data$date, "%m"))
+ Numbers <- na.omit(data)
+ rownames(Numbers) <- 1:nrow(Numbers)
+ head(Numbers)
+end.rcode-->
+
+<!--begin.rcode
+dim(Numbers)
+end.rcode-->
+
+<!--begin.rcode
+library(ggplot2)
+end.rcode-->
+
+<b> WHAT IS MEAN TOTAL NUMBER OF STEPS TAKEN PER DAY?</b>
+<p>For this part of the assignment, you can ignore the missing values in the dataset.<p/>
+<p>Make a histogram of the total number of steps taken each day</p>
+
+<!--begin.rcode
+ggplot(Numbers, aes(date, steps)) + geom_bar(stat = "identity", colour = "green", fill = "green", width = 0.7) + facet_grid(. ~ month, scales = "free") + labs(title = "Histogram of Total Number of Steps Taken Each Day", x = "Date", y = "Total number of steps")
+end.rcode-->
+
+<p> Calculate and report the mean and median total number of steps taken per day</p>
+
+<p>Mean total number of steps taken per day:</p>
+
+<!--begin.rcode
+totalSteps <- aggregate(Numbers$steps, list(Date = Numbers$date), FUN = "sum")$x
+mean(totalSteps)
+end.rcode-->
+
+Median the total number of step taken per day:
+<!--begin.rcode
+ median(totalSteps)
+end.rcode-->
+
+<b>WHAT IS THE AVERAGE DAILY ACTIVITY PATTERN?</b>
+
+<p>Make a time series plot (i.e. type=1) of the 5-minute interval (x-axis) and the average number of steps taken across all days (y-axis)</p>
+<!--begin.rcode
+ avgSteps <- aggregate(Numbers$steps, list(interval = as.numeric(as.character(Numbers$interval))), FUN = "mean")
+names(avgSteps)[2] <- "meanOfSteps"
+ 
+ggplot(avgSteps, aes(interval, meanOfSteps)) + geom_line(color = "cyan", size = 0.8) + labs(title = "Time Series Plot of the 5-minute Interval", x = "5-minute intervals", y = "Average Number of Steps Taken")
+end.rcode-->
+<p>which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?</p>
+<!--begin.rcode
+avgSteps[avgSteps$meanOfSteps == max(avgSteps$meanOfSteps), ]
+end.rcode-->
+
+<b>INPUTTING MISSING VALUES</b>
+<p>total number of rows with NA</p>
+<!--begin.rcode
+sum(is.na(data))
+end.rcode-->
+
+<p>Devise a strategy for filling in all of the missing values in the dataset. The strategy does not need to be sophisticated. For example, you could use the mean/median for that day, or the mean for that 5-minute interval, etc.</p>
+
+<p>I will use the mean of the 5-minute interval to fill the missing values</P>
+<p> CREATE A NEW DATASET THAT IS EQUAL TO THE ORIGINAL BUT INCLUDES THE MISSING DATA</p>
+<!--begin.rcode
+newList <- data 
+for (i in 1:nrow(newList)) {
+  if (is.na(newList$steps[i])) {
+    newList$steps[i] <- avgSteps[which(newList$interval[i] == avgSteps$interval), ]$meanOfSteps
+  }
+}
+
+head(newList)
+end.rcode-->
+
+<p>Make a histogram of the total number of steps taken each day and Calculate and report the mean and median total number of steps taken per day.</p>
+
+<!--begin.rcode
+ggplot(newList, aes(date, steps)) + geom_bar(stat = "identity",
+                                             colour = "Black",
+                                             fill = "Black",
+                                             width = 0.7) + facet_grid(. ~ month, scales = "free") + labs(title = "Histogram of Total Number of Steps Taken Each Day (no missing data)", x = "Date", y = "Total number of steps")
+end.rcode-->
+
+<p>Do these values differ from the estimates from the first part of the assignment? What is the impact of imputing data on the estimates of the total daily number of steps?</p>
+
+<p>Mean total number of steps taken each day:</p>
+
+<!--begin.rcode
+TotalStepcount <- aggregate(newList$steps, 
+                           list(Date = newList$date), 
+                           FUN = "sum")$x
+TotalMean <- mean(TotalStepcount)
+TotalMean
+end.rcode-->
+
+<p>Median total number of steps taken each day:</p>
+<!--begin.rcode
+TotalMedian <- median(TotalStepcount)
+TotalMedian
+end.rcode-->
+
+<p>Compare them with the two before imputing mising data:</p>
+
+<!--begin.rcode
+oldMean <- mean(Stepcount)
+oldMedian <- median(Stepcount)
+TotalMean - oldMean
+TotalMedian - oldMedian
+end.rcode-->
+
+<p>After inputting the data, both the TotalMedian and TotalMean have remained the same as the old mean and median</p>
+
+<b>ARE THERE DIFFERENCES IN ACTIVITY PATTERNS BETWEEN WEEKDAYS AND WEEKENDS?</B>
+<p>Create a new factor variable in the dataset with two levels - "weekday" and "weekend" indicating whether a given date is a weekend or weekday</p>
+<!--begin.rcode
+head(newList)
+newList$weekdays <- factor(format(newList$date, "%A"))
+levels(newList$weekdays)
+levels(newList$weekdays) <- list(weekday = c("Monday", "Tuesday",
+                                             "Wednesday", 
+                                             "Thursday", "Friday"),
+                                 weekend = c("Saturday", "Sunday"))
+table(newList$weekdays)
+end.rcode-->
+
+<p>Make a panel plot containing a time series plot (i.e. type=1) of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekdays or weekend days (y-axis)</p>
+<!--begin.rcode
+avgSteps <- aggregate(newList$steps, 
+                      list(interval = as.numeric(as.character(newList$interval)), 
+                           weekdays = newList$weekdays),
+                      FUN = "mean")
+names(avgSteps)[3] <- "meanOfSteps"
+library(lattice)
+xyplot(avgSteps$meanOfSteps ~ avgSteps$interval | avgSteps$weekdays, 
+       layout = c(1, 2), type = "l", 
+       xlab = "Interval", ylab = "Number of steps")
+end.rcode-->
+
+<p>END OF SUBMISSION</P>
+
+
+
+</body>
+</html>
